@@ -116,16 +116,16 @@ streamlit run streamlit_app.py</code></pre>
 
   <h2>Project Links</h2>
     <ul>
-        <li><strong>GitHub Repository:</strong> <a href="https://github.com/YourUsername/YourRepository">Click Here</a></li>
-        <li><strong>Streamlit App:</strong> <a href="https://share.streamlit.io/YourApp">Click Here</a></li>
+       
+<li><strong>Streamlit App:</strong> <a href="https://share.streamlit.io/YourApp">Click Here</a></li>
     </ul>
 
   <h2>Contributors</h2>
-    <p><strong>Student Name:</strong> Your Name<br>
-    <strong>Candidate Registration Number:</strong> XXXXXXXX<br>
+    <p><strong>Student Name:</strong> Akshith Reddy<br>
+    <strong>Candidate Registration Number:</strong> 1000194<br>
     <strong>CRS Name:</strong> Artificial Intelligence<br>
     <strong>Course Name:</strong> Data Mining<br>
-    <strong>School Name:</strong> Your Institution</p>
+    <strong>School Name:</strong> Birla open minds international school</p>
 </body>
 </html>
 
