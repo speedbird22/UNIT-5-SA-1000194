@@ -23,11 +23,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Amazon Market Basket Analysis - Data Mining Project</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
+    
+body {
             font-family: Arial, sans-serif;
             margin: 40px;
             line-height: 1.6;
