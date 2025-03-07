@@ -1,6 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
 
 # Load dataset
 file_path = "amazon.csv"
@@ -23,6 +25,7 @@ def plot_price_distribution():
     plt.xlabel("Actual Price")
     plt.ylabel("Frequency")
     plt.show()
+    input("Press Enter to continue...")
 
 # Function to plot Discount vs Actual Price
 def plot_discount_vs_price():
@@ -32,6 +35,7 @@ def plot_discount_vs_price():
     plt.xlabel("Actual Price")
     plt.ylabel("Discount Percentage")
     plt.show()
+    input("Press Enter to continue...")
 
 # Function to plot Rating Distribution
 def plot_rating_distribution():
@@ -41,6 +45,7 @@ def plot_rating_distribution():
     plt.xlabel("Rating")
     plt.ylabel("Frequency")
     plt.show()
+    input("Press Enter to continue...")
 
 # Function to plot Category Distribution
 def plot_category_distribution():
@@ -52,6 +57,7 @@ def plot_category_distribution():
     plt.ylabel("Count")
     plt.xticks(rotation=45)
     plt.show()
+    input("Press Enter to continue...")
 
 # Function to plot Top 10 Popular Products
 def plot_popular_products():
@@ -63,6 +69,31 @@ def plot_popular_products():
     plt.ylabel("Rating Count")
     plt.xticks(rotation=45, ha='right')
     plt.show()
+    input("Press Enter to continue...")
+
+# Function to plot 3D Scatter Plot of Price, Discount, and Rating
+def plot_3d_price_discount_rating():
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(df["actual_price"], df["discount_percentage"], df["rating"], c=df["rating"], cmap='coolwarm')
+    ax.set_xlabel("Actual Price")
+    ax.set_ylabel("Discount Percentage")
+    ax.set_zlabel("Rating")
+    ax.set_title("3D Scatter Plot: Price, Discount, and Rating")
+    plt.show()
+    input("Press Enter to continue...")
+
+# Function to plot 3D Scatter Plot of Rating, Rating Count, and Discount
+def plot_3d_rating_vs_count_vs_discount():
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(df["rating"], df["rating_count"], df["discount_percentage"], c=df["discount_percentage"], cmap='viridis')
+    ax.set_xlabel("Rating")
+    ax.set_ylabel("Rating Count")
+    ax.set_zlabel("Discount Percentage")
+    ax.set_title("3D Scatter Plot: Rating vs Rating Count vs Discount")
+    plt.show()
+    input("Press Enter to continue...")
 
 # Main menu to select graphs
 def main():
@@ -73,8 +104,10 @@ def main():
         print("3. Rating Distribution")
         print("4. Category Distribution")
         print("5. Popular Products")
-        print("6. Exit")
-        choice = input("Select an option (1-6): ")
+        print("6. 3D Price vs Discount vs Rating")
+        print("7. 3D Rating vs Rating Count vs Discount")
+        print("8. Exit")
+        choice = input("Select an option (1-8): ")
         
         if choice == '1':
             plot_price_distribution()
@@ -87,6 +120,10 @@ def main():
         elif choice == '5':
             plot_popular_products()
         elif choice == '6':
+            plot_3d_price_discount_rating()
+        elif choice == '7':
+            plot_3d_rating_vs_count_vs_discount()
+        elif choice == '8':
             print("Exiting...")
             break
         else:
