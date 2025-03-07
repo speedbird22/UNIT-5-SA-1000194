@@ -51,13 +51,13 @@
         }
     </style>
 </head>
+
+    
 <body>
     <h1>Amazon Market Basket Analysis - Data Mining Year 1 Summative Assessment</h1>
-    
-    <h2>Project Overview</h2>
+        <h2>Project Overview</h2>
     <p>This project analyzes Amazon's e-commerce data to uncover customer shopping behaviors, segment customers, and identify relationships between products using data mining techniques.</p>
-    
-    <h2>Project Scope</h2>
+        <h2>Project Scope</h2>
     <ul>
         <li>Perform <strong>customer segmentation</strong> using clustering techniques.</li>
         <li>Identify <strong>frequent itemsets</strong> using association rule mining.</li>
@@ -65,48 +65,48 @@
         <li>Develop an <strong>interactive Streamlit dashboard</strong> to present findings.</li>
     </ul>
 
-    <h2>Dataset & Preprocessing</h2>
+   <h2>Dataset & Preprocessing</h2>
     <ul>
         <li>Dataset includes attributes: <code>Product ID, Category, Actual Price, Discounted Price, Rating, Reviews</code>.</li>
         <li>Handled missing values, removed outliers, and normalized numerical attributes.</li>
         <li>Encoded categorical data using one-hot encoding.</li>
     </ul>
 
-    <h2>Exploratory Data Analysis (EDA)</h2>
-    <ul>
+  <h2>Exploratory Data Analysis (EDA)</h2>
+  <ul>
         <li>Plotted <strong>histograms</strong> and <strong>boxplots</strong> for price distributions.</li>
         <li>Visualized <strong>category distributions</strong> with bar charts.</li>
         <li>Created <strong>heatmaps</strong> to analyze correlations between pricing, ratings, and categories.</li>
     </ul>
 
-    <h2>Customer Segmentation (Clustering)</h2>
+<h2>Customer Segmentation (Clustering)</h2>
     <ul>
         <li>Applied <strong>K-Means Clustering</strong> and <strong>Hierarchical Clustering</strong> to group customers.</li>
         <li>Features used: <code>Discounted Price, Actual Price, Product Category, Rating</code>.</li>
         <li>Identified customer segments for personalized marketing.</li>
     </ul>
 
-    <h2>Market Basket Analysis (Association Rule Mining)</h2>
+ <h2>Market Basket Analysis (Association Rule Mining)</h2>
     <ul>
         <li>Used <strong>Apriori Algorithm</strong> to identify frequent product associations.</li>
         <li>Generated <strong>Support, Confidence, and Lift</strong> metrics for rule validation.</li>
         <li>Discovered product bundling opportunities.</li>
     </ul>
 
-    <h2>User Behavior Analysis</h2>
+  <h2>User Behavior Analysis</h2>
     <ul>
         <li>Performed <strong>sentiment analysis</strong> on customer reviews using NLP.</li>
         <li>Generated <strong>word clouds</strong> for review trends.</li>
     </ul>
 
-    <h2>Deployment with Streamlit</h2>
+ <h2>Deployment with Streamlit</h2>
     <ul>
         <li>Developed an interactive <strong>dashboard</strong> to visualize findings.</li>
         <li>Includes features for customer segmentation, frequent itemsets, and sentiment analysis.</li>
         <li>Deployed via <strong>Streamlit Cloud</strong>.</li>
     </ul>
 
-    <h2>GitHub Repository Contents</h2>
+  <h2>GitHub Repository Contents</h2>
     <ul>
         <li><code>notebooks/</code> - Jupyter Notebook with analysis and visualizations.</li>
         <li><code>data/</code> - Cleaned dataset used in the project.</li>
@@ -114,17 +114,17 @@
         <li><code>README.html</code> - This documentation.</li>
     </ul>
 
-    <h2>How to Run the Project</h2>
+<h2>How to Run the Project</h2>
     <pre><code>pip install -r requirements.txt
 streamlit run streamlit_app.py</code></pre>
 
-    <h2>Project Links</h2>
+  <h2>Project Links</h2>
     <ul>
         <li><strong>GitHub Repository:</strong> <a href="https://github.com/YourUsername/YourRepository">Click Here</a></li>
         <li><strong>Streamlit App:</strong> <a href="https://share.streamlit.io/YourApp">Click Here</a></li>
     </ul>
 
-    <h2>Contributors</h2>
+  <h2>Contributors</h2>
     <p><strong>Student Name:</strong> Your Name<br>
     <strong>Candidate Registration Number:</strong> XXXXXXXX<br>
     <strong>CRS Name:</strong> Artificial Intelligence<br>
