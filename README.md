@@ -110,9 +110,6 @@
         <li><code>README.html</code> - This documentation.</li>
     </ul>
 
-<h2>How to Run the Project</h2>
-    <pre><code>pip install -r requirements.txt
-streamlit run streamlit_app.py</code></pre>
 
   <h2>Project Links</h2>
     <ul>
