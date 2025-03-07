@@ -1,15 +1,6 @@
-import os
-import subprocess
 import pandas as pd
 import streamlit as st
-
-# Ensure Plotly is installed
-try:
-    import plotly.express as px
-except ImportError:
-    st.warning("Plotly is not installed. Installing now...")
-    subprocess.run(["pip", "install", "plotly"], check=True)
-    import plotly.express as px
+import plotly.express as px
 
 # Load dataset
 file_path = "amazon.csv"
