@@ -1,81 +1,112 @@
-import numpy as np
+import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics.pairwise import cosine_similarity
+from collections import Counter
+from itertools import combinations
 
-# Sample Data
-data = {
-    'Product': ['A', 'B', 'C', 'D', 'E'],
-    'Sales': [120, 90, 75, 110, 95],
-    'Profit': [30, 25, 15, 35, 20],
-    'Quantity': [10, 8, 5, 12, 7]
-}
-df = pd.DataFrame(data)
+# Load dataset
+def load_data():
+    df = pd.read_csv("amazon.csv")
+    return df
 
-# Function to generate a bar chart
-def show_bar_chart():
-    plt.figure(figsize=(12, 7))
-    sns.barplot(x='Product', y='Sales', data=df, palette='coolwarm')
-    plt.title('Sales by Product', fontsize=16)
-    plt.xlabel('Product', fontsize=14)
-    plt.ylabel('Sales', fontsize=14)
-    plt.grid(True)
-    plt.show()
+df = load_data()
 
-# Function to generate a scatter plot
-def show_scatter_plot():
-    plt.figure(figsize=(12, 7))
-    sns.scatterplot(x='Sales', y='Profit', data=df, hue='Product', s=250)
-    plt.title('Sales vs Profit', fontsize=16)
-    plt.xlabel('Sales', fontsize=14)
-    plt.ylabel('Profit', fontsize=14)
-    plt.grid(True)
-    plt.show()
+# Data Preprocessing
+st.title("Amazon E-Commerce Data Analysis Dashboard")
+st.sidebar.header("Navigation")
+option = st.sidebar.radio("Choose Analysis", [
+    "Data Overview", "EDA", "Customer Segmentation", "Association Rule Mining", 
+    "Price Prediction", "Product Recommendation", "User Behavior Analysis"
+])
 
-# Function to generate a pie chart
-def show_pie_chart():
-    plt.figure(figsize=(9, 9))
-    plt.pie(df['Quantity'], labels=df['Product'], autopct='%1.1f%%', colors=sns.color_palette('coolwarm'), startangle=140)
-    plt.title('Quantity Distribution', fontsize=16)
-    plt.show()
+# Encode categorical variables
+le = LabelEncoder()
+df["category_encoded"] = le.fit_transform(df["category"].astype(str))
 
-# Function for 3D Visualization
-def show_3d_visualization():
-    fig = plt.figure(figsize=(12, 9))
-    ax = fig.add_subplot(111, projection='3d')
+def plot_eda():
+    st.subheader("Exploratory Data Analysis (EDA)")
     
-    ax.scatter(df['Sales'], df['Profit'], df['Quantity'], c='r', marker='o', s=150)
-    ax.set_xlabel('Sales', fontsize=12)
-    ax.set_ylabel('Profit', fontsize=12)
-    ax.set_zlabel('Quantity', fontsize=12)
-    ax.set_title('3D Visualization of Sales, Profit, and Quantity', fontsize=16)
+    # Histograms
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.histplot(df["actual_price"], bins=30, kde=True, ax=ax[0])
+    ax[0].set_title("Distribution of Actual Prices")
+    sns.histplot(df["discounted_price"], bins=30, kde=True, ax=ax[1])
+    ax[1].set_title("Distribution of Discounted Prices")
+    st.pyplot(fig)
     
-    plt.show()
+    # Scatter Plot
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discount_percentage"], palette="coolwarm")
+    ax.set_title("Price Comparison")
+    st.pyplot(fig)
+    
+if option == "EDA":
+    plot_eda()
 
-# Console-based menu
-def menu():
-    while True:
-        print("\nChoose a visualization:")
-        print("1. Bar Chart")
-        print("2. Scatter Plot")
-        print("3. Pie Chart")
-        print("4. 3D Visualization")
-        print("5. Exit")
-        
-        choice = input("Enter your choice: ")
-        if choice == '1':
-            show_bar_chart()
-        elif choice == '2':
-            show_scatter_plot()
-        elif choice == '3':
-            show_pie_chart()
-        elif choice == '4':
-            show_3d_visualization()
-        elif choice == '5':
-            break
+# Customer Segmentation
+if option == "Customer Segmentation":
+    st.subheader("Customer Segmentation")
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    df["cluster"] = kmeans.fit_predict(df[["discounted_price", "rating", "rating_count"]].dropna())
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.scatterplot(x=df["discounted_price"], y=df["rating"], hue=df["cluster"], palette="viridis")
+    ax.set_title("Customer Segments")
+    st.pyplot(fig)
+
+# Association Rule Mining
+if option == "Association Rule Mining":
+    st.subheader("Frequent Itemsets")
+    df_exploded = df.assign(category=df["category"].str.split("|")).explode("category")
+    transactions = df_exploded.groupby("product_id")["category"].apply(list)
+    pair_counts = Counter()
+    for items in transactions:
+        for pair in combinations(set(items), 2):
+            pair_counts[pair] += 1
+    pair_df = pd.DataFrame(pair_counts.items(), columns=["Item Pair", "Count"]).sort_values(by="Count", ascending=False)
+    st.dataframe(pair_df.head(10))
+
+# Price Prediction Model
+if option == "Price Prediction":
+    st.subheader("Price Prediction Model")
+    X = df[["actual_price", "discount_percentage", "rating", "rating_count", "category_encoded"]].dropna()
+    y = df["discounted_price"].loc[X.index]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
+
+# Recommendation System
+if option == "Product Recommendation":
+    st.subheader("Product Recommendation")
+    ratings_matrix = df.pivot_table(index="product_id", columns="category", values="rating").fillna(0)
+    similarity_matrix = cosine_similarity(ratings_matrix)
+    product_similarity_df = pd.DataFrame(similarity_matrix, index=ratings_matrix.index, columns=ratings_matrix.index)
+    
+    def get_recommendations(product_id, n=5):
+        if product_id in product_similarity_df:
+            similar_products = product_similarity_df[product_id].sort_values(ascending=False).iloc[1 : n + 1]
+            return df[df["product_id"].isin(similar_products.index)][["product_id", "product_name"]]
         else:
-            print("Invalid choice, please try again.")
+            return "Product ID not found."
+    
+    product_id = st.text_input("Enter Product ID:")
+    if product_id:
+        st.dataframe(get_recommendations(product_id))
 
-if __name__ == "__main__":
-    menu()
+# User Behavior Analysis
+if option == "User Behavior Analysis":
+    st.subheader("User Behavior Analysis")
+    st.write("Understanding customer reviews and ratings trends.")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.boxplot(x=df["rating"])
+    ax.set_title("Rating Distribution")
+    st.pyplot(fig)
