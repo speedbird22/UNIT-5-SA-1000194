@@ -68,9 +68,19 @@ def plot_segments():
 # Association Rule Mining
 basket = df[['product_id', 'category']].drop_duplicates()
 basket['present'] = 1
+basket['category'] = basket['category'].astype(str)
 basket = basket.pivot_table(index='product_id', columns='category', values='present', fill_value=0)
-freq_items = apriori(basket, min_support=0.01, use_colnames=True)
-rules = association_rules(freq_items, metric="lift", min_threshold=1)
+
+# Ensure there are frequent items
+if not basket.empty:
+    freq_items = apriori(basket, min_support=0.01, use_colnames=True)
+    
+    if not freq_items.empty:
+        rules = association_rules(freq_items, metric="lift", min_threshold=1)
+    else:
+        rules = pd.DataFrame()
+else:
+    rules = pd.DataFrame()
 
 def show_association_rules():
     st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
