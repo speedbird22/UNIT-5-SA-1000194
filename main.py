@@ -1,103 +1,80 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import streamlit as st
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules
 
-# Load dataset
-def load_data():
-    df = pd.read_csv("amazon.csv")
-    st.write("### Raw Data Preview")
-    st.write(df.head(10))
-    
-    required_columns = ["discounted_price", "rating", "rating_count"]
-    for col in required_columns:
-        if col not in df.columns:
-            st.error(f"Missing column: {col}")
-            return pd.DataFrame()
-    
-    df[required_columns] = df[required_columns].apply(pd.to_numeric, errors='coerce')
-    df.dropna(subset=required_columns, inplace=True)
-    return df
+# Load Data
+file_path = '/mnt/data/amazon.csv'
+df = pd.read_csv(file_path)
 
-df = load_data()
+# Data Cleaning
+df.dropna(subset=['product_id', 'actual_price', 'discounted_price', 'rating', 'rating_count'], inplace=True)
+df.fillna(method='ffill', inplace=True)
+df['actual_price'] = df['actual_price'].astype(float)
+df['discounted_price'] = df['discounted_price'].astype(float)
+df['rating'] = df['rating'].astype(float)
+df['rating_count'] = df['rating_count'].astype(int)
 
-# Sidebar Menu
-st.sidebar.title("Amazon E-commerce Analysis")
-menu = st.sidebar.radio("Select Analysis", ["Data Overview", "Exploratory Data Analysis", "Customer Segmentation", "Frequent Itemsets", "User Behavior Analysis"])
+# Encoding Categorical Features
+le = LabelEncoder()
+df['category'] = le.fit_transform(df['category'].astype(str))
 
-# Data Overview
-if menu == "Data Overview":
-    st.title("Data Overview")
-    if df.empty:
-        st.warning("No data available.")
-    else:
-        st.dataframe(df.head())
-        st.write("Basic Statistics:")
-        st.write(df.describe())
+# EDA Functions
+def plot_histograms():
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.histplot(df['actual_price'], bins=30, ax=ax[0], kde=True)
+    ax[0].set_title("Actual Price Distribution")
+    sns.histplot(df['discounted_price'], bins=30, ax=ax[1], kde=True)
+    ax[1].set_title("Discounted Price Distribution")
+    st.pyplot(fig)
 
-# EDA
-elif menu == "Exploratory Data Analysis":
-    st.title("Exploratory Data Analysis")
-    if df.empty:
-        st.warning("No data available for visualization.")
-    else:
-        fig, axes = plt.subplots(3, 1, figsize=(8, 15))
-        sns.histplot(df["discounted_price"].dropna(), bins=30, kde=True, ax=axes[0])
-        axes[0].set_title("Discounted Price Distribution")
-        
-        sns.histplot(df["rating"].dropna(), bins=30, kde=True, ax=axes[1])
-        axes[1].set_title("Rating Distribution")
-        
-        sns.histplot(df["rating_count"].dropna(), bins=30, kde=True, ax=axes[2])
-        axes[2].set_title("Rating Count Distribution")
-        
-        st.pyplot(fig)
+def plot_scatter():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['discounted_price'] / df['actual_price'])
+    plt.title("Actual Price vs Discounted Price")
+    st.pyplot(fig)
+
+def plot_correlation():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.heatmap(df[['actual_price', 'discounted_price', 'rating', 'rating_count', 'category']].corr(), annot=True, cmap='coolwarm')
+    plt.title("Correlation Heatmap")
+    st.pyplot(fig)
 
 # Customer Segmentation
-elif menu == "Customer Segmentation":
-    st.title("Customer Segmentation")
-    if df.empty:
-        st.warning("No data available for clustering.")
-    else:
-        try:
-            kmeans = KMeans(n_clusters=3, random_state=42)
-            df = df.dropna(subset=["discounted_price", "rating", "rating_count"])
-            df["cluster"] = kmeans.fit_predict(df[["discounted_price", "rating", "rating_count"]])
-            st.write("Clustered Data:")
-            st.dataframe(df[["discounted_price", "rating", "rating_count", "cluster"].head()])
-        except Exception as e:
-            st.error(f"Error in clustering: {e}")
+scaler = StandardScaler()
+df_scaled = scaler.fit_transform(df[['actual_price', 'discounted_price', 'rating', 'rating_count']])
+kmeans = KMeans(n_clusters=3, random_state=42)
+df['customer_segment'] = kmeans.fit_predict(df_scaled)
 
-# Frequent Itemset Mining
-elif menu == "Frequent Itemsets":
-    st.title("Frequent Itemset Mining")
-    if "user_id" in df.columns and "product_id" in df.columns:
-        basket = df.groupby(["user_id", "product_id"]).size().unstack().fillna(0)
-        if not basket.empty:
-            frequent_items = apriori(basket, min_support=0.05, use_colnames=True)
-            rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
-            if not rules.empty:
-                st.write("Top Association Rules:")
-                st.dataframe(rules.head())
-            else:
-                st.warning("No significant association rules found.")
-        else:
-            st.warning("No frequent itemsets found.")
-    else:
-        st.warning("Required columns for frequent itemset mining are missing.")
+def plot_segments():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['customer_segment'], palette='viridis')
+    plt.title("Customer Segments")
+    st.pyplot(fig)
 
-# User Behavior Analysis
-elif menu == "User Behavior Analysis":
-    st.title("User Behavior Analysis")
-    if "user_id" in df.columns and "review_title" in df.columns and "review_content" in df.columns:
-        reviews = df[["user_id", "review_title", "review_content"]].dropna()
-        if not reviews.empty:
-            st.write("Top Customer Reviews")
-            st.dataframe(reviews.head(10))
-        else:
-            st.warning("No review data available.")
-    else:
-        st.warning("Required review data is missing.")
+# Association Rule Mining
+basket = df[['product_id', 'category']].pivot_table(index='product_id', columns='category', aggfunc=len, fill_value=0)
+freq_items = apriori(basket, min_support=0.01, use_colnames=True)
+rules = association_rules(freq_items, metric="lift", min_threshold=1)
+
+def show_association_rules():
+    st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+
+# Streamlit App
+st.title("Amazon Data Analysis Dashboard")
+option = st.sidebar.selectbox("Choose Analysis", ["Histograms", "Scatter Plot", "Correlation Heatmap", "Customer Segmentation", "Association Rules"])
+
+if option == "Histograms":
+    plot_histograms()
+elif option == "Scatter Plot":
+    plot_scatter()
+elif option == "Correlation Heatmap":
+    plot_correlation()
+elif option == "Customer Segmentation":
+    plot_segments()
+elif option == "Association Rules":
+    show_association_rules()
