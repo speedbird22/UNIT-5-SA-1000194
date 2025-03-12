@@ -22,7 +22,7 @@ df['actual_price'].fillna(df['actual_price'].median(), inplace=True)
 df['discounted_price'].fillna(df['discounted_price'].median(), inplace=True)
 df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
 df['rating'].fillna(df['rating'].median(), inplace=True)
-df['rating_count'] = df['rating_count'].astype(int)
+df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce').fillna(0).astype(int)
 
 # Encoding Categorical Features
 le = LabelEncoder()
