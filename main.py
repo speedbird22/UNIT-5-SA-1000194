@@ -45,13 +45,13 @@ elif menu == "Exploratory Data Analysis":
         st.warning("No data available for visualization.")
     else:
         fig, axes = plt.subplots(3, 1, figsize=(8, 15))
-        sns.histplot(df["discounted_price"], bins=30, kde=True, ax=axes[0])
+        sns.histplot(df["discounted_price"].dropna(), bins=30, kde=True, ax=axes[0])
         axes[0].set_title("Discounted Price Distribution")
         
-        sns.histplot(df["rating"], bins=30, kde=True, ax=axes[1])
+        sns.histplot(df["rating"].dropna(), bins=30, kde=True, ax=axes[1])
         axes[1].set_title("Rating Distribution")
         
-        sns.histplot(df["rating_count"], bins=30, kde=True, ax=axes[2])
+        sns.histplot(df["rating_count"].dropna(), bins=30, kde=True, ax=axes[2])
         axes[2].set_title("Rating Count Distribution")
         
         st.pyplot(fig)
@@ -62,10 +62,14 @@ elif menu == "Customer Segmentation":
     if df.empty:
         st.warning("No data available for clustering.")
     else:
-        kmeans = KMeans(n_clusters=3, random_state=42)
-        df["cluster"] = kmeans.fit_predict(df[["discounted_price", "rating", "rating_count"]])
-        st.write("Clustered Data:")
-        st.dataframe(df[["discounted_price", "rating", "rating_count", "cluster"].head()])
+        try:
+            kmeans = KMeans(n_clusters=3, random_state=42)
+            df = df.dropna(subset=["discounted_price", "rating", "rating_count"])
+            df["cluster"] = kmeans.fit_predict(df[["discounted_price", "rating", "rating_count"]])
+            st.write("Clustered Data:")
+            st.dataframe(df[["discounted_price", "rating", "rating_count", "cluster"].head()])
+        except Exception as e:
+            st.error(f"Error in clustering: {e}")
 
 # Frequent Itemset Mining
 elif menu == "Frequent Itemsets":
@@ -75,8 +79,11 @@ elif menu == "Frequent Itemsets":
         if not basket.empty:
             frequent_items = apriori(basket, min_support=0.05, use_colnames=True)
             rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
-            st.write("Top Association Rules:")
-            st.dataframe(rules.head())
+            if not rules.empty:
+                st.write("Top Association Rules:")
+                st.dataframe(rules.head())
+            else:
+                st.warning("No significant association rules found.")
         else:
             st.warning("No frequent itemsets found.")
     else:
