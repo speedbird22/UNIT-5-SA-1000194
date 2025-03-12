@@ -21,8 +21,12 @@ df['discounted_price'].replace(0, np.nan, inplace=True)
 df['actual_price'].fillna(df['actual_price'].median(), inplace=True)
 df['discounted_price'].fillna(df['discounted_price'].median(), inplace=True)
 df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+df['rating'].replace(0, np.nan, inplace=True)
 df['rating'].fillna(df['rating'].median(), inplace=True)
-df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce').fillna(0).astype(int)
+df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce')
+df['rating_count'].replace(0, np.nan, inplace=True)
+df['rating_count'].fillna(df['rating_count'].median(), inplace=True)
+df['rating_count'] = df['rating_count'].astype(int)
 
 # Encoding Categorical Features
 le = LabelEncoder()
@@ -62,7 +66,9 @@ def plot_segments():
     st.pyplot(fig)
 
 # Association Rule Mining
-basket = df[['product_id', 'category']].pivot_table(index='product_id', columns='category', aggfunc=len, fill_value=0)
+basket = df[['product_id', 'category']].drop_duplicates()
+basket['present'] = 1
+basket = basket.pivot_table(index='product_id', columns='category', values='present', fill_value=0)
 freq_items = apriori(basket, min_support=0.01, use_colnames=True)
 rules = association_rules(freq_items, metric="lift", min_threshold=1)
 
