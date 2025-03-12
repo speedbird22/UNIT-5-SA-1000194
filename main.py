@@ -4,109 +4,57 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics.pairwise import cosine_similarity
-from collections import Counter
-from itertools import combinations
+from mlxtend.frequent_patterns import apriori, association_rules
 
 # Load dataset
 def load_data():
     df = pd.read_csv("amazon.csv")
+    df.dropna(subset=["discounted_price", "rating", "rating_count"], inplace=True)
+    df["discounted_price"] = df["discounted_price"].astype(float)
+    df["rating"] = df["rating"].astype(float)
+    df["rating_count"] = df["rating_count"].astype(float)
     return df
 
 df = load_data()
 
-# Data Preprocessing
-st.title("Amazon E-Commerce Data Analysis Dashboard")
-st.sidebar.header("Navigation")
-option = st.sidebar.radio("Choose Analysis", [
-    "Data Overview", "EDA", "Customer Segmentation", "Association Rule Mining", 
-    "Price Prediction", "Product Recommendation", "User Behavior Analysis"
-])
+# Sidebar Menu
+st.sidebar.title("Amazon E-commerce Analysis")
+menu = st.sidebar.radio("Select Analysis", ["Data Overview", "Exploratory Data Analysis", "Customer Segmentation", "Frequent Itemsets", "User Behavior Analysis"])
 
-# Encode categorical variables
-le = LabelEncoder()
-df["category_encoded"] = le.fit_transform(df["category"].astype(str))
+# Data Overview
+if menu == "Data Overview":
+    st.title("Data Overview")
+    st.dataframe(df.head())
+    st.write("Basic Statistics:")
+    st.write(df.describe())
 
-def plot_eda():
-    st.subheader("Exploratory Data Analysis (EDA)")
-    
-    # Histograms
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.histplot(df["actual_price"], bins=30, kde=True, ax=ax[0])
-    ax[0].set_title("Distribution of Actual Prices")
-    sns.histplot(df["discounted_price"], bins=30, kde=True, ax=ax[1])
-    ax[1].set_title("Distribution of Discounted Prices")
+# EDA
+elif menu == "Exploratory Data Analysis":
+    st.title("Exploratory Data Analysis")
+    fig, ax = plt.subplots()
+    sns.histplot(df["discounted_price"], bins=30, kde=True, ax=ax)
     st.pyplot(fig)
-    
-    # Scatter Plot
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discount_percentage"], palette="coolwarm")
-    ax.set_title("Price Comparison")
-    st.pyplot(fig)
-    
-if option == "EDA":
-    plot_eda()
 
 # Customer Segmentation
-if option == "Customer Segmentation":
-    st.subheader("Customer Segmentation")
+elif menu == "Customer Segmentation":
+    st.title("Customer Segmentation")
     kmeans = KMeans(n_clusters=3, random_state=42)
-    df["cluster"] = kmeans.fit_predict(df[["discounted_price", "rating", "rating_count"]].dropna())
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df["discounted_price"], y=df["rating"], hue=df["cluster"], palette="viridis")
-    ax.set_title("Customer Segments")
-    st.pyplot(fig)
+    df_clean = df.dropna(subset=["discounted_price", "rating", "rating_count"])
+    df_clean["cluster"] = kmeans.fit_predict(df_clean[["discounted_price", "rating", "rating_count"]].astype(float))
+    st.write("Clustered Data:")
+    st.dataframe(df_clean.head())
 
-# Association Rule Mining
-if option == "Association Rule Mining":
-    st.subheader("Frequent Itemsets")
-    df_exploded = df.assign(category=df["category"].str.split("|")).explode("category")
-    transactions = df_exploded.groupby("product_id")["category"].apply(list)
-    pair_counts = Counter()
-    for items in transactions:
-        for pair in combinations(set(items), 2):
-            pair_counts[pair] += 1
-    pair_df = pd.DataFrame(pair_counts.items(), columns=["Item Pair", "Count"]).sort_values(by="Count", ascending=False)
-    st.dataframe(pair_df.head(10))
-
-# Price Prediction Model
-if option == "Price Prediction":
-    st.subheader("Price Prediction Model")
-    X = df[["actual_price", "discount_percentage", "rating", "rating_count", "category_encoded"]].dropna()
-    y = df["discounted_price"].loc[X.index]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
-
-# Recommendation System
-if option == "Product Recommendation":
-    st.subheader("Product Recommendation")
-    ratings_matrix = df.pivot_table(index="product_id", columns="category", values="rating").fillna(0)
-    similarity_matrix = cosine_similarity(ratings_matrix)
-    product_similarity_df = pd.DataFrame(similarity_matrix, index=ratings_matrix.index, columns=ratings_matrix.index)
-    
-    def get_recommendations(product_id, n=5):
-        if product_id in product_similarity_df:
-            similar_products = product_similarity_df[product_id].sort_values(ascending=False).iloc[1 : n + 1]
-            return df[df["product_id"].isin(similar_products.index)][["product_id", "product_name"]]
-        else:
-            return "Product ID not found."
-    
-    product_id = st.text_input("Enter Product ID:")
-    if product_id:
-        st.dataframe(get_recommendations(product_id))
+# Frequent Itemset Mining
+elif menu == "Frequent Itemsets":
+    st.title("Frequent Itemset Mining")
+    basket = df.groupby(["user_id", "product_id"]).size().unstack().fillna(0)
+    frequent_items = apriori(basket, min_support=0.05, use_colnames=True)
+    rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
+    st.write("Top Association Rules:")
+    st.dataframe(rules.head())
 
 # User Behavior Analysis
-if option == "User Behavior Analysis":
-    st.subheader("User Behavior Analysis")
-    st.write("Understanding customer reviews and ratings trends.")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.boxplot(x=df["rating"])
-    ax.set_title("Rating Distribution")
-    st.pyplot(fig)
+elif menu == "User Behavior Analysis":
+    st.title("User Behavior Analysis")
+    st.write("Top Customer Reviews")
+    st.dataframe(df[["user_id", "review_title", "review_content"]].dropna().head(10))
