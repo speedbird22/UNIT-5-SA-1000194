@@ -8,7 +8,7 @@ from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules
 
 # Load Data
-file_path = '/mnt/data/amazon.csv'
+file_path = 'amazon.csv'
 df = pd.read_csv(file_path)
 
 # Data Cleaning
