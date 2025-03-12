@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
-from mlxtend.frequent_patterns import apriori, association_rules
+from mpl_toolkits.mplot3d import Axes3D
 
 # Load Data
 file_path = 'amazon.csv'
@@ -65,29 +65,19 @@ def plot_segments():
     plt.title("Customer Segments")
     st.pyplot(fig)
 
-# Association Rule Mining
-basket = df[['product_id', 'category']].drop_duplicates()
-basket['present'] = 1
-basket['category'] = basket['category'].astype(str)
-basket = basket.pivot_table(index='product_id', columns='category', values='present', fill_value=0)
-
-# Ensure there are frequent items
-if not basket.empty:
-    freq_items = apriori(basket, min_support=0.01, use_colnames=True)
-    
-    if not freq_items.empty:
-        rules = association_rules(freq_items, metric="lift", min_threshold=1)
-    else:
-        rules = pd.DataFrame()
-else:
-    rules = pd.DataFrame()
-
-def show_association_rules():
-    st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+def plot_3d_graph():
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(df['actual_price'], df['discounted_price'], df['rating'], c=df['customer_segment'], cmap='viridis')
+    ax.set_xlabel('Actual Price')
+    ax.set_ylabel('Discounted Price')
+    ax.set_zlabel('Rating')
+    ax.set_title("3D Visualization of Product Data")
+    st.pyplot(fig)
 
 # Streamlit App
 st.title("Amazon Data Analysis Dashboard")
-option = st.sidebar.selectbox("Choose Analysis", ["Histograms", "Scatter Plot", "Correlation Heatmap", "Customer Segmentation", "Association Rules"])
+option = st.sidebar.selectbox("Choose Analysis", ["Histograms", "Scatter Plot", "Correlation Heatmap", "Customer Segmentation", "3D Visualization"])
 
 if option == "Histograms":
     plot_histograms()
@@ -97,5 +87,5 @@ elif option == "Correlation Heatmap":
     plot_correlation()
 elif option == "Customer Segmentation":
     plot_segments()
-elif option == "Association Rules":
-    show_association_rules()
+elif option == "3D Visualization":
+    plot_3d_graph()
