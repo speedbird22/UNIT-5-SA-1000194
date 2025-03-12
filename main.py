@@ -9,11 +9,17 @@ from mlxtend.frequent_patterns import apriori, association_rules
 # Load dataset
 def load_data():
     df = pd.read_csv("amazon.csv")
-    df.dropna(subset=["discounted_price", "rating", "rating_count"], inplace=True)
-    df["discounted_price"] = pd.to_numeric(df["discounted_price"], errors='coerce')
-    df["rating"] = pd.to_numeric(df["rating"], errors='coerce')
-    df["rating_count"] = pd.to_numeric(df["rating_count"], errors='coerce')
-    df.dropna(inplace=True)
+    st.write("### Raw Data Preview")
+    st.write(df.head(10))
+    
+    required_columns = ["discounted_price", "rating", "rating_count"]
+    for col in required_columns:
+        if col not in df.columns:
+            st.error(f"Missing column: {col}")
+            return pd.DataFrame()
+    
+    df[required_columns] = df[required_columns].apply(pd.to_numeric, errors='coerce')
+    df.dropna(subset=required_columns, inplace=True)
     return df
 
 df = load_data()
@@ -25,14 +31,19 @@ menu = st.sidebar.radio("Select Analysis", ["Data Overview", "Exploratory Data A
 # Data Overview
 if menu == "Data Overview":
     st.title("Data Overview")
-    st.dataframe(df.head())
-    st.write("Basic Statistics:")
-    st.write(df.describe())
+    if df.empty:
+        st.warning("No data available.")
+    else:
+        st.dataframe(df.head())
+        st.write("Basic Statistics:")
+        st.write(df.describe())
 
 # EDA
 elif menu == "Exploratory Data Analysis":
     st.title("Exploratory Data Analysis")
-    if not df.empty:
+    if df.empty:
+        st.warning("No data available for visualization.")
+    else:
         fig, axes = plt.subplots(3, 1, figsize=(8, 15))
         sns.histplot(df["discounted_price"], bins=30, kde=True, ax=axes[0])
         axes[0].set_title("Discounted Price Distribution")
@@ -44,30 +55,30 @@ elif menu == "Exploratory Data Analysis":
         axes[2].set_title("Rating Count Distribution")
         
         st.pyplot(fig)
-    else:
-        st.warning("No data available for visualization.")
 
 # Customer Segmentation
 elif menu == "Customer Segmentation":
     st.title("Customer Segmentation")
-    df_clean = df.dropna(subset=["discounted_price", "rating", "rating_count"])
-    if not df_clean.empty:
-        kmeans = KMeans(n_clusters=3, random_state=42)
-        df_clean["cluster"] = kmeans.fit_predict(df_clean[["discounted_price", "rating", "rating_count"]])
-        st.write("Clustered Data:")
-        st.dataframe(df_clean.head())
+    if df.empty:
+        st.warning("No data available for clustering.")
     else:
-        st.warning("Not enough data for clustering.")
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        df["cluster"] = kmeans.fit_predict(df[["discounted_price", "rating", "rating_count"]])
+        st.write("Clustered Data:")
+        st.dataframe(df[["discounted_price", "rating", "rating_count", "cluster"].head()])
 
 # Frequent Itemset Mining
 elif menu == "Frequent Itemsets":
     st.title("Frequent Itemset Mining")
     if "user_id" in df.columns and "product_id" in df.columns:
         basket = df.groupby(["user_id", "product_id"]).size().unstack().fillna(0)
-        frequent_items = apriori(basket, min_support=0.05, use_colnames=True)
-        rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
-        st.write("Top Association Rules:")
-        st.dataframe(rules.head())
+        if not basket.empty:
+            frequent_items = apriori(basket, min_support=0.05, use_colnames=True)
+            rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
+            st.write("Top Association Rules:")
+            st.dataframe(rules.head())
+        else:
+            st.warning("No frequent itemsets found.")
     else:
         st.warning("Required columns for frequent itemset mining are missing.")
 
@@ -75,7 +86,11 @@ elif menu == "Frequent Itemsets":
 elif menu == "User Behavior Analysis":
     st.title("User Behavior Analysis")
     if "user_id" in df.columns and "review_title" in df.columns and "review_content" in df.columns:
-        st.write("Top Customer Reviews")
-        st.dataframe(df[["user_id", "review_title", "review_content"]].dropna().head(10))
+        reviews = df[["user_id", "review_title", "review_content"]].dropna()
+        if not reviews.empty:
+            st.write("Top Customer Reviews")
+            st.dataframe(reviews.head(10))
+        else:
+            st.warning("No review data available.")
     else:
         st.warning("Required review data is missing.")
