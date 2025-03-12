@@ -20,7 +20,8 @@ df['actual_price'].replace(0, np.nan, inplace=True)
 df['discounted_price'].replace(0, np.nan, inplace=True)
 df['actual_price'].fillna(df['actual_price'].median(), inplace=True)
 df['discounted_price'].fillna(df['discounted_price'].median(), inplace=True)
-df['rating'] = df['rating'].astype(float)
+df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+df['rating'].fillna(df['rating'].median(), inplace=True)
 df['rating_count'] = df['rating_count'].astype(int)
 
 # Encoding Categorical Features
