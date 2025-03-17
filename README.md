@@ -23,30 +23,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            line-height: 1.6;
-        }
-        h1, h2, h3 {
-            color: #333;
-        }
-        code {
-            background: #f4f4f4;
-            padding: 5px;
-            border-radius: 5px;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-    </style>
-</head>
+    
 
     
 <body>
