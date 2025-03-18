@@ -80,6 +80,8 @@ elif option == "Association Rule Mining":
     
     # Prepare data for Apriori
     basket = df.groupby(["user_id", "product_id"]).size().unstack().fillna(0)
+    basket = (basket > 0).astype(int)  # Convert to 1/0 format
+    
     frequent_items = apriori(basket, min_support=0.01, use_colnames=True)
     rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
     
