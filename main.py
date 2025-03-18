@@ -10,11 +10,15 @@ def load_and_clean_data():
     file_path = "amazon.csv"
     df = pd.read_csv(file_path)
     
+    # Convert price columns to numeric, forcing errors to NaN
+    df["discounted_price"] = pd.to_numeric(df["discounted_price"], errors='coerce')
+    df["actual_price"] = pd.to_numeric(df["actual_price"], errors='coerce')
+    
     # Data Cleaning
-    df.drop_duplicates(inplace=True)  # Remove duplicates
-    df.dropna(subset=["discounted_price", "actual_price", "rating", "rating_count", "category", "product_id"], inplace=True)  # Drop missing values
-    df = df[df["discounted_price"] > 0]  # Remove invalid price values
-    df = df[df["actual_price"] >= df["discounted_price"]]  # Ensure actual price is not less than discounted price
+    df.drop_duplicates(inplace=True)
+    df.dropna(subset=["discounted_price", "actual_price", "rating", "rating_count", "category", "product_id"], inplace=True)
+    df = df[df["discounted_price"] > 0]
+    df = df[df["actual_price"] >= df["discounted_price"]]
     
     return df
 
