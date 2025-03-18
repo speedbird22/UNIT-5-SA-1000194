@@ -28,6 +28,10 @@ df["rating_count"] = df["rating_count"].replace(",", "", regex=True).astype(floa
 for col in ["discounted_price", "actual_price", "discount_percentage", "rating", "rating_count"]:
     df[col].fillna(df[col].median(), inplace=True)
 
+# Ensure user_id and product_id are strings
+df["user_id"] = df["user_id"].astype(str)
+df["product_id"] = df["product_id"].astype(str)
+
 # Streamlit App
 st.title("Amazon E-Commerce Data Analysis")
 
@@ -79,17 +83,21 @@ elif option == "Association Rule Mining":
     st.header("Association Rule Mining")
     
     # Prepare data for Apriori
-    basket = df.groupby(["user_id", "product_id"]).size().unstack().fillna(0)
+    basket = df.pivot_table(index="user_id", columns="product_id", values="discounted_price", aggfunc="count").fillna(0)
     basket = (basket > 0).astype(int)  # Convert to 1/0 format
     
     frequent_items = apriori(basket, min_support=0.01, use_colnames=True)
-    rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
     
-    st.write("Frequent Itemsets:")
-    st.dataframe(frequent_items.sort_values(by="support", ascending=False).head(10))
-    
-    st.write("Top Association Rules:")
-    st.dataframe(rules.sort_values(by="lift", ascending=False).head(10))
+    if not frequent_items.empty:
+        rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
+        
+        st.write("Frequent Itemsets:")
+        st.dataframe(frequent_items.sort_values(by="support", ascending=False).head(10))
+        
+        st.write("Top Association Rules:")
+        st.dataframe(rules.sort_values(by="lift", ascending=False).head(10))
+    else:
+        st.warning("No frequent itemsets found. Try lowering the min_support value.")
     
 elif option == "User Behavior Analysis":
     st.header("User Behavior Analysis")
