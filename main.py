@@ -39,6 +39,10 @@ def run_association_rule_mining():
     df_basket['category'] = df_basket['category'].astype(str)
     df_basket = pd.crosstab(df_basket['product_id'], df_basket['category'])
     
+    if df_basket.shape[0] == 0 or df_basket.shape[1] == 0:
+        st.write("No transactions available for Association Rule Mining.")
+        return
+    
     frequent_itemsets = apriori(df_basket, min_support=0.01, use_colnames=True)
     
     if frequent_itemsets.empty:
