@@ -86,7 +86,11 @@ elif option == "Association Rule Mining":
     basket = df.pivot_table(index="user_id", columns="product_id", values="discounted_price", aggfunc="count").fillna(0)
     basket = (basket > 0).astype(int)  # Convert to 1/0 format
     
-    frequent_items = apriori(basket, min_support=0.01, use_colnames=True)
+    frequent_items = apriori(basket, min_support=0.005, use_colnames=True)
+    
+    if frequent_items.empty:
+        st.warning("No frequent itemsets found. Lowering min_support to 0.001")
+        frequent_items = apriori(basket, min_support=0.001, use_colnames=True)
     
     if not frequent_items.empty:
         rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
@@ -97,7 +101,7 @@ elif option == "Association Rule Mining":
         st.write("Top Association Rules:")
         st.dataframe(rules.sort_values(by="lift", ascending=False).head(10))
     else:
-        st.warning("No frequent itemsets found. Try lowering the min_support value.")
+        st.warning("No frequent itemsets found. Try lowering the min_support value further.")
     
 elif option == "User Behavior Analysis":
     st.header("User Behavior Analysis")
