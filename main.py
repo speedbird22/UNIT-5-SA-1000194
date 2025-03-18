@@ -6,12 +6,13 @@ from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules
 import numpy as np
 from wordcloud import WordCloud
+from mpl_toolkits.mplot3d import Axes3D
 
 # Function to clean price and discount columns
 def clean_currency(value):
     """Remove ₹ and % symbols and convert to float."""
     if isinstance(value, str):
-        return float(value.replace("₹", "").replace(",", "").replace("%", "").strip())
+        return float(value.replace("\u20b9", "").replace(",", "").replace("%", "").strip())
     return np.nan
 
 # Load raw dataset
@@ -54,10 +55,28 @@ if option == "Exploratory Data Analysis (EDA)":
     ax[1].set_title("Actual Price Distribution")
     st.pyplot(fig)
     
+    # Box plots for prices
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.boxplot(y=df["discounted_price"], ax=ax[0])
+    ax[0].set_title("Discounted Price Box Plot")
+    sns.boxplot(y=df["actual_price"], ax=ax[1])
+    ax[1].set_title("Actual Price Box Plot")
+    st.pyplot(fig)
+    
     # Scatter plot for price relationships
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discount_percentage"], palette="coolwarm")
     ax.set_title("Actual vs Discounted Price")
+    st.pyplot(fig)
+    
+    # 3D Scatter plot for Price and Discount Percentage
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(df["actual_price"], df["discounted_price"], df["discount_percentage"], c=df["discount_percentage"], cmap="coolwarm")
+    ax.set_xlabel("Actual Price")
+    ax.set_ylabel("Discounted Price")
+    ax.set_zlabel("Discount Percentage")
+    ax.set_title("3D Price Analysis")
     st.pyplot(fig)
     
     # Heatmap for correlations
@@ -79,6 +98,16 @@ elif option == "Customer Segmentation":
     ax.set_title("Customer Segments")
     st.pyplot(fig)
     
+    # 3D Clustering visualization
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(df["actual_price"], df["discounted_price"], df["rating"], c=df["Cluster"], cmap="viridis")
+    ax.set_xlabel("Actual Price")
+    ax.set_ylabel("Discounted Price")
+    ax.set_zlabel("Rating")
+    ax.set_title("3D Customer Segmentation")
+    st.pyplot(fig)
+    
 elif option == "Association Rule Mining":
     st.header("Association Rule Mining")
     
@@ -94,10 +123,8 @@ elif option == "Association Rule Mining":
     
     if not frequent_items.empty:
         rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
-        
         st.write("Frequent Itemsets:")
         st.dataframe(frequent_items.sort_values(by="support", ascending=False).head(10))
-        
         st.write("Top Association Rules:")
         st.dataframe(rules.sort_values(by="lift", ascending=False).head(10))
     else:
@@ -112,3 +139,7 @@ elif option == "User Behavior Analysis":
     ax.imshow(wordcloud, interpolation='bilinear')
     ax.axis("off")
     st.pyplot(fig)
+    
+    # Table of most reviewed products
+    st.write("Most Reviewed Products:")
+    st.dataframe(df.sort_values(by="rating_count", ascending=False)[["product_id", "rating_count"]].head(10))
