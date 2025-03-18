@@ -4,130 +4,97 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules
+import numpy as np
+from wordcloud import WordCloud
 
-# Load and clean dataset
-def load_and_clean_data():
-    file_path = "amazon.csv"
-    df = pd.read_csv(file_path)
-    
-    # Convert price and rating columns to numeric, replacing errors with median values
-    for col in ["discounted_price", "actual_price", "rating", "rating_count"]:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-        median_value = df[col].median()
-        df[col].fillna(median_value, inplace=True)
-    
-    # Data Cleaning
-    df.drop_duplicates(inplace=True)
-    df = df[df["discounted_price"] > 0]
-    df = df[df["actual_price"] >= df["discounted_price"]]
-    
-    return df
+# Function to clean price and discount columns
+def clean_currency(value):
+    """Remove ₹ and % symbols and convert to float."""
+    if isinstance(value, str):
+        return float(value.replace("₹", "").replace(",", "").replace("%", "").strip())
+    return np.nan
 
-df = load_and_clean_data()
+# Load raw dataset
+df = pd.read_csv("amazon.csv")
 
-# Debugging: Print basic statistics
-print(df.describe())
-print("Data loaded with shape:", df.shape)
+# Clean data
+df["discounted_price"] = df["discounted_price"].apply(clean_currency)
+df["actual_price"] = df["actual_price"].apply(clean_currency)
+df["discount_percentage"] = df["discount_percentage"].apply(clean_currency)
+df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
+df["rating_count"] = df["rating_count"].replace(",", "", regex=True).astype(float)
+
+# Fill missing values with median
+for col in ["discounted_price", "actual_price", "discount_percentage", "rating", "rating_count"]:
+    df[col].fillna(df[col].median(), inplace=True)
 
 # Streamlit App
 st.title("Amazon E-Commerce Data Analysis")
 
-# Sidebar Menu
-menu = st.sidebar.selectbox("Select Analysis Type", [
-    "Exploratory Data Analysis (EDA)", "Customer Segmentation",
-    "Association Rule Mining", "User Behavior Analysis"
+# Dropdown menu for different analyses
+option = st.sidebar.selectbox("Select Analysis", [
+    "Exploratory Data Analysis (EDA)",
+    "Customer Segmentation",
+    "Association Rule Mining",
+    "User Behavior Analysis"
 ])
 
-if menu == "Exploratory Data Analysis (EDA)":
-    st.subheader("Exploratory Data Analysis")
+if option == "Exploratory Data Analysis (EDA)":
+    st.header("Exploratory Data Analysis")
     
-    if df.empty:
-        st.write("No data available for visualization.")
-    else:
-        # Histograms and Boxplots
-        st.write("### Distribution of Product Prices")
-        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-        sns.histplot(df["discounted_price"].dropna(), bins=30, kde=True, ax=ax[0])
-        ax[0].set_title("Discounted Price Distribution")
-        sns.boxplot(x=df["actual_price"].dropna(), ax=ax[1])
-        ax[1].set_title("Actual Price Boxplot")
-        st.pyplot(fig)
-        
-        # Scatter Plots
-        st.write("### Price Comparison")
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discounted_price"] - df["actual_price"], palette="coolwarm")
-        plt.title("Actual Price vs Discounted Price")
-        st.pyplot(fig)
-        
-        # Rating Distribution
-        st.write("### Product Ratings Distribution")
-        rating_counts = df["rating"].value_counts().reset_index()
-        rating_counts.columns = ["Rating", "Count"]
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.barplot(x=rating_counts["Rating"], y=rating_counts["Count"])
-        plt.xlabel("Rating")
-        plt.ylabel("Count")
-        plt.title("Ratings Count Distribution")
-        st.pyplot(fig)
-        
-        # Heatmap
-        st.write("### Correlation Heatmap")
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.heatmap(df[["discounted_price", "actual_price", "rating", "rating_count"]].corr(), annot=True, cmap="coolwarm")
-        st.pyplot(fig)
-
-elif menu == "Customer Segmentation":
-    st.subheader("Customer Segmentation Using K-Means")
+    # Histograms for Prices
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.histplot(df["discounted_price"], bins=30, kde=True, ax=ax[0])
+    ax[0].set_title("Discounted Price Distribution")
+    sns.histplot(df["actual_price"], bins=30, kde=True, ax=ax[1])
+    ax[1].set_title("Actual Price Distribution")
+    st.pyplot(fig)
     
-    # Select relevant features and drop NaN
-    cluster_df = df[["discounted_price", "actual_price", "rating", "rating_count"]].dropna().copy()
+    # Scatter plot for price relationships
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discount_percentage"], palette="coolwarm")
+    ax.set_title("Actual vs Discounted Price")
+    st.pyplot(fig)
     
-    if cluster_df.empty:
-        st.write("Not enough data for clustering.")
-    else:
-        # Apply K-Means clustering
-        kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-        cluster_df["Cluster"] = kmeans.fit_predict(cluster_df)
-        
-        # Visualization
-        st.write("### Clusters based on Pricing and Ratings")
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.scatterplot(x=cluster_df["actual_price"], y=cluster_df["discounted_price"], hue=cluster_df["Cluster"], palette="Set1")
-        plt.xlabel("Actual Price")
-        plt.ylabel("Discounted Price")
-        plt.title("Customer Segmentation Clusters")
-        st.pyplot(fig)
-
-elif menu == "Association Rule Mining":
-    st.subheader("Frequent Itemset Mining with Apriori")
+    # Heatmap for correlations
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(df[["discounted_price", "actual_price", "rating", "rating_count"]].corr(), annot=True, cmap="coolwarm")
+    st.pyplot(fig)
     
-    # Transform data for Apriori
-    basket = df.pivot_table(index='product_id', columns='category', values='discounted_price', aggfunc='sum').fillna(0)
-    basket = basket.applymap(lambda x: 1 if x > 0 else 0)
+elif option == "Customer Segmentation":
+    st.header("Customer Segmentation")
     
-    if basket.empty:
-        st.write("Not enough data for association rule mining.")
-    else:
-        # Apply Apriori
-        frequent_itemsets = apriori(basket, min_support=0.01, use_colnames=True)
-        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
-        
-        # Display Rules
-        st.write("### Association Rules")
-        st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
-
-elif menu == "User Behavior Analysis":
-    st.subheader("User Behavior Insights")
+    # Select features for clustering
+    features = df[["discounted_price", "actual_price", "rating", "rating_count"]]
+    kmeans = KMeans(n_clusters=3, random_state=42).fit(features)
+    df["Cluster"] = kmeans.labels_
     
-    # Analyze Reviews
-    if "user_id" in df.columns and not df["user_id"].isna().all():
-        review_counts = df["user_id"].value_counts().head(10)
-        st.write("### Top 10 Users by Review Count")
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.barplot(x=review_counts.index, y=review_counts.values)
-        plt.xticks(rotation=90)
-        plt.title("Most Active Reviewers")
-        st.pyplot(fig)
-    else:
-        st.write("User data not available in this dataset.")
+    # Scatter plot for clusters
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["Cluster"], palette="viridis")
+    ax.set_title("Customer Segments")
+    st.pyplot(fig)
+    
+elif option == "Association Rule Mining":
+    st.header("Association Rule Mining")
+    
+    # Prepare data for Apriori
+    basket = df.groupby(["user_id", "product_id"]).size().unstack().fillna(0)
+    frequent_items = apriori(basket, min_support=0.01, use_colnames=True)
+    rules = association_rules(frequent_items, metric="lift", min_threshold=1.0)
+    
+    st.write("Frequent Itemsets:")
+    st.dataframe(frequent_items.sort_values(by="support", ascending=False).head(10))
+    
+    st.write("Top Association Rules:")
+    st.dataframe(rules.sort_values(by="lift", ascending=False).head(10))
+    
+elif option == "User Behavior Analysis":
+    st.header("User Behavior Analysis")
+    
+    # Word cloud of reviews
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(" ".join(df["review_content"].dropna()))
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.imshow(wordcloud, interpolation='bilinear')
+    ax.axis("off")
+    st.pyplot(fig)
