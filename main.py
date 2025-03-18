@@ -33,68 +33,18 @@ df['rating_count'] = df['rating_count'].astype(int)
 le = LabelEncoder()
 df['category'] = le.fit_transform(df['category'].astype(str))
 
-# EDA Functions
-def plot_histograms():
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.histplot(df['actual_price'], bins=30, ax=ax[0], kde=True)
-    ax[0].set_title("Actual Price Distribution")
-    sns.histplot(df['discounted_price'], bins=30, ax=ax[1], kde=True)
-    ax[1].set_title("Discounted Price Distribution")
-    st.pyplot(fig)
-
-def plot_boxplots():
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.boxplot(y=df['actual_price'], ax=ax[0])
-    ax[0].set_title("Actual Price Boxplot")
-    sns.boxplot(y=df['discounted_price'], ax=ax[1])
-    ax[1].set_title("Discounted Price Boxplot")
-    st.pyplot(fig)
-
-def plot_scatter():
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['discounted_price'] / df['actual_price'])
-    plt.title("Actual Price vs Discounted Price")
-    st.pyplot(fig)
-
-def plot_correlation():
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.heatmap(df[['actual_price', 'discounted_price', 'rating', 'rating_count', 'category']].corr(), annot=True, cmap='coolwarm')
-    plt.title("Correlation Heatmap")
-    st.pyplot(fig)
-
-# Customer Segmentation
-scaler = StandardScaler()
-df_scaled = scaler.fit_transform(df[['actual_price', 'discounted_price', 'rating', 'rating_count']])
-kmeans = KMeans(n_clusters=3, random_state=42)
-df['customer_segment'] = kmeans.fit_predict(df_scaled)
-
-def plot_segments():
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['customer_segment'], palette='viridis')
-    plt.title("Customer Segments")
-    st.pyplot(fig)
-
-def plot_3d_graph():
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(df['actual_price'], df['discounted_price'], df['rating'], c=df['customer_segment'], cmap='viridis')
-    ax.set_xlabel('Actual Price')
-    ax.set_ylabel('Discounted Price')
-    ax.set_zlabel('Rating')
-    ax.set_title("3D Visualization of Product Data")
-    st.pyplot(fig)
-
 # Association Rule Mining
 def run_association_rule_mining():
     df_basket = df[['product_id', 'category']]
     df_basket['category'] = df_basket['category'].astype(str)
-    df_basket = df_basket.pivot_table(index='product_id', columns='category', aggfunc=lambda x: 1, fill_value=0)
-    frequent_itemsets = apriori(df_basket, min_support=0.05, use_colnames=True)
+    df_basket = pd.crosstab(df_basket['product_id'], df_basket['category'])
+    
+    frequent_itemsets = apriori(df_basket, min_support=0.01, use_colnames=True)
     
     if frequent_itemsets.empty:
-        st.write("No frequent itemsets found. Try reducing min_support.")
+        st.write("No frequent itemsets found. Try reducing min_support further.")
     else:
-        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=0.5)
         
         if rules.empty:
             st.write("No strong association rules found. Try lowering the lift threshold.")
@@ -117,21 +67,7 @@ def run_association_rule_mining():
 
 # Streamlit App
 st.title("Amazon Data Analysis Dashboard")
-analysis_type = st.sidebar.selectbox("Choose Analysis", ["EDA", "Customer Segmentation", "Association Rule Mining", "3D Visualization"])
+analysis_type = st.sidebar.selectbox("Choose Analysis", ["Association Rule Mining"])
 
-if analysis_type == "EDA":
-    eda_option = st.selectbox("Choose EDA Graph", ["Histograms", "Boxplots", "Scatter Plot", "Correlation Heatmap"])
-    if eda_option == "Histograms":
-        plot_histograms()
-    elif eda_option == "Boxplots":
-        plot_boxplots()
-    elif eda_option == "Scatter Plot":
-        plot_scatter()
-    elif eda_option == "Correlation Heatmap":
-        plot_correlation()
-elif analysis_type == "Customer Segmentation":
-    plot_segments()
-elif analysis_type == "3D Visualization":
-    plot_3d_graph()
-elif analysis_type == "Association Rule Mining":
+if analysis_type == "Association Rule Mining":
     run_association_rule_mining()
