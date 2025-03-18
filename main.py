@@ -87,10 +87,33 @@ def plot_3d_graph():
 # Association Rule Mining
 def run_association_rule_mining():
     df_basket = df[['product_id', 'category']]
-    df_basket = df_basket.pivot_table(index='product_id', columns='category', aggfunc=len, fill_value=0)
+    df_basket['category'] = df_basket['category'].astype(str)
+    df_basket = df_basket.pivot_table(index='product_id', columns='category', aggfunc=lambda x: 1, fill_value=0)
     frequent_itemsets = apriori(df_basket, min_support=0.05, use_colnames=True)
-    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
-    st.write(rules.head())
+    
+    if frequent_itemsets.empty:
+        st.write("No frequent itemsets found. Try reducing min_support.")
+    else:
+        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+        
+        if rules.empty:
+            st.write("No strong association rules found. Try lowering the lift threshold.")
+        else:
+            st.write("Top 5 Association Rules")
+            st.write(rules.head())
+            
+            fig, ax = plt.subplots(figsize=(8, 5))
+            sns.scatterplot(x=rules['support'], y=rules['confidence'], hue=rules['lift'], size=rules['lift'], palette='coolwarm')
+            plt.title("Support vs Confidence with Lift")
+            plt.xlabel("Support")
+            plt.ylabel("Confidence")
+            st.pyplot(fig)
+            
+            fig, ax = plt.subplots(figsize=(8, 5))
+            sns.histplot(rules['lift'], bins=20, kde=True, color='blue')
+            plt.title("Distribution of Lift Values")
+            plt.xlabel("Lift")
+            st.pyplot(fig)
 
 # Streamlit App
 st.title("Amazon Data Analysis Dashboard")
