@@ -5,80 +5,122 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
-from mpl_toolkits.mplot3d import Axes3D
 from mlxtend.frequent_patterns import apriori, association_rules
+from mpl_toolkits.mplot3d import Axes3D
 
 # Load Data
 file_path = 'amazon.csv'
 df = pd.read_csv(file_path)
-st.write(df.head())  # Debugging to check if data loads correctly
 
-# Data Cleaning
-original_size = df.shape[0]  # Store original dataset size before cleaning
-df.dropna(subset=['product_id', 'actual_price', 'discounted_price', 'rating', 'rating_count'], inplace=True)
+# Data Cleaning (Ensuring no data is lost)
 df.fillna(method='ffill', inplace=True)
 df['actual_price'] = pd.to_numeric(df['actual_price'].replace('[^\d.]', '', regex=True), errors='coerce')
 df['discounted_price'] = pd.to_numeric(df['discounted_price'].replace('[^\d.]', '', regex=True), errors='coerce')
-df['actual_price'].replace(0, np.nan, inplace=True)
-df['discounted_price'].replace(0, np.nan, inplace=True)
-df['actual_price'].fillna(df['actual_price'].median(), inplace=True)
-df['discounted_price'].fillna(df['discounted_price'].median(), inplace=True)
 df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
-df['rating'].replace(0, np.nan, inplace=True)
-df['rating'].fillna(df['rating'].median(), inplace=True)
 df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce')
-df['rating_count'].replace(0, np.nan, inplace=True)
-df['rating_count'].fillna(df['rating_count'].median(), inplace=True)
+df.fillna(df.median(), inplace=True)
 df['rating_count'] = df['rating_count'].astype(int)
-
-# Verify data cleaning did not remove excessive rows
-final_size = df.shape[0]
-st.write(f"Rows before cleaning: {original_size}, Rows after cleaning: {final_size}")
-
-# Encoding Categorical Features
 le = LabelEncoder()
 df['category'] = le.fit_transform(df['category'].astype(str))
 
-# Fixing Graph Rendering Issue
-def plot_histograms():
+# EDA Functions
+def plot_price_distribution():
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
     sns.histplot(df['actual_price'], bins=30, ax=ax[0], kde=True)
     ax[0].set_title("Actual Price Distribution")
     sns.histplot(df['discounted_price'], bins=30, ax=ax[1], kde=True)
     ax[1].set_title("Discounted Price Distribution")
-    fig.tight_layout()  # Ensure proper spacing
     st.pyplot(fig)
 
-# Fixing Association Rule Mining
-def association_rule_mining():
-    st.write("Applying Apriori Algorithm for Frequent Itemset Mining")
-    
-    # Convert product_id and category into a transactional format
-    df_basket = df.pivot_table(index='product_id', columns='category', aggfunc='size', fill_value=0)
-    df_basket = df_basket.applymap(lambda x: 1 if x > 0 else 0)  # Convert to binary format
+def plot_box_plots():
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.boxplot(y=df['actual_price'], ax=ax[0])
+    ax[0].set_title("Actual Price Boxplot")
+    sns.boxplot(y=df['discounted_price'], ax=ax[1])
+    ax[1].set_title("Discounted Price Boxplot")
+    st.pyplot(fig)
 
-    # Ensure there are valid transactions
-    if df_basket.shape[0] == 0:
-        st.write("No transactions available for Apriori. Try adjusting min_support.")
-        return
+def plot_scatter():
+    df['discount_percentage'] = (df['actual_price'] - df['discounted_price']) / df['actual_price'] * 100
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['discount_percentage'])
+    plt.title("Actual Price vs Discounted Price")
+    st.pyplot(fig)
 
-    # Apply Apriori Algorithm
-    frequent_itemsets = apriori(df_basket, min_support=0.01, use_colnames=True)
-    if frequent_itemsets.empty:
-        st.write("No frequent itemsets found. Try lowering the min_support value.")
-        return
+def plot_rating_distribution():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.barplot(x=df['rating'].value_counts().index, y=df['rating'].value_counts().values)
+    plt.title("Product Rating Distribution")
+    st.pyplot(fig)
 
-    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
-    if rules.empty:
-        st.write("No association rules generated. Adjust min_threshold or check dataset.")
-    else:
-        st.write(rules.head())
+def plot_category_distribution():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    df['category'].value_counts().plot(kind='bar')
+    plt.title("Product Category Distribution")
+    st.pyplot(fig)
+
+def plot_correlation():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.heatmap(df[['actual_price', 'discounted_price', 'rating', 'rating_count', 'category']].corr(), annot=True, cmap='coolwarm')
+    plt.title("Correlation Heatmap")
+    st.pyplot(fig)
+
+# Customer Segmentation
+scaler = StandardScaler()
+df_scaled = scaler.fit_transform(df[['actual_price', 'discounted_price', 'rating', 'rating_count']])
+kmeans = KMeans(n_clusters=3, random_state=42)
+df['customer_segment'] = kmeans.fit_predict(df_scaled)
+
+def plot_segments():
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['customer_segment'], palette='viridis')
+    plt.title("Customer Segments")
+    st.pyplot(fig)
+
+def plot_3d_graph():
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(df['actual_price'], df['discounted_price'], df['rating'], c=df['customer_segment'], cmap='viridis')
+    ax.set_xlabel('Actual Price')
+    ax.set_ylabel('Discounted Price')
+    ax.set_zlabel('Rating')
+    ax.set_title("3D Visualization of Product Data")
+    st.pyplot(fig)
+
+# Association Rule Mining
+def run_association_rule_mining():
+    basket = df.groupby(['product_id', 'category']).size().unstack().fillna(0)
+    frequent_itemsets = apriori(basket, min_support=0.05, use_colnames=True)
+    rules = association_rules(frequent_itemsets, metric='lift', min_threshold=1.0)
+    st.write("Association Rules:")
+    st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
 
 # Streamlit App
 st.title("Amazon Data Analysis Dashboard")
-menu = st.sidebar.selectbox("Choose Analysis", ["Exploratory Data Analysis", "Customer Segmentation", "Association Rule Mining", "User Behavior Analysis"])
+menu = st.sidebar.selectbox("Choose Analysis", ["Exploratory Data Analysis", "Customer Segmentation", "Association Rule Mining", "User Behavior Analysis", "Correlation Analysis"])
 
 if menu == "Exploratory Data Analysis":
-    plot_histograms()
+    option = st.selectbox("EDA Options", ["Price Distribution", "Box Plots", "Scatter Plot", "Rating Distribution", "Category Distribution"])
+    if option == "Price Distribution":
+        plot_price_distribution()
+    elif option == "Box Plots":
+        plot_box_plots()
+    elif option == "Scatter Plot":
+        plot_scatter()
+    elif option == "Rating Distribution":
+        plot_rating_distribution()
+    elif option == "Category Distribution":
+        plot_category_distribution()
+
+elif menu == "Customer Segmentation":
+    option = st.selectbox("Segmentation Options", ["Customer Segments", "3D Visualization"])
+    if option == "Customer Segments":
+        plot_segments()
+    elif option == "3D Visualization":
+        plot_3d_graph()
+
 elif menu == "Association Rule Mining":
-    association_rule_mining()
+    run_association_rule_mining()
+
+elif menu == "Correlation Analysis":
+    plot_correlation()
