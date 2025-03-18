@@ -33,9 +33,15 @@ if option == "EDA":
     else:
         st.error("Column 'product_category' not found in the dataset!")
     
-    corr = df[['discounted_price', 'actual_price', 'rating', 'rating_count']].corr()
-    sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax[2])
-    ax[2].set_title("Correlation Heatmap")
+    numeric_cols = ['discounted_price', 'actual_price', 'rating', 'rating_count']
+    available_numeric_cols = [col for col in numeric_cols if col in df.columns]
+    
+    if available_numeric_cols:
+        corr = df[available_numeric_cols].corr()
+        sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax[2])
+        ax[2].set_title("Correlation Heatmap")
+    else:
+        st.error("No numeric columns available for correlation analysis!")
     
     st.pyplot(fig)
     st.dataframe(df.describe())
