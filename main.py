@@ -10,21 +10,24 @@ def load_and_clean_data():
     file_path = "amazon.csv"
     df = pd.read_csv(file_path)
     
-    # Convert price and rating columns to numeric, forcing errors to NaN
-    df["discounted_price"] = pd.to_numeric(df["discounted_price"], errors='coerce')
-    df["actual_price"] = pd.to_numeric(df["actual_price"], errors='coerce')
-    df["rating"] = pd.to_numeric(df["rating"], errors='coerce')
-    df["rating_count"] = pd.to_numeric(df["rating_count"], errors='coerce')
+    # Convert price and rating columns to numeric, replacing errors with median values
+    for col in ["discounted_price", "actual_price", "rating", "rating_count"]:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+        median_value = df[col].median()
+        df[col].fillna(median_value, inplace=True)
     
     # Data Cleaning
     df.drop_duplicates(inplace=True)
-    df.dropna(subset=["discounted_price", "actual_price", "rating", "rating_count", "category", "product_id"], inplace=True)
     df = df[df["discounted_price"] > 0]
     df = df[df["actual_price"] >= df["discounted_price"]]
     
     return df
 
 df = load_and_clean_data()
+
+# Debugging: Print basic statistics
+print(df.describe())
+print("Data loaded with shape:", df.shape)
 
 # Streamlit App
 st.title("Amazon E-Commerce Data Analysis")
@@ -38,38 +41,41 @@ menu = st.sidebar.selectbox("Select Analysis Type", [
 if menu == "Exploratory Data Analysis (EDA)":
     st.subheader("Exploratory Data Analysis")
     
-    # Histograms and Boxplots
-    st.write("### Distribution of Product Prices")
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.histplot(df["discounted_price"].dropna(), bins=30, kde=True, ax=ax[0])
-    ax[0].set_title("Discounted Price Distribution")
-    sns.boxplot(x=df["actual_price"].dropna(), ax=ax[1])
-    ax[1].set_title("Actual Price Boxplot")
-    st.pyplot(fig)
-    
-    # Scatter Plots
-    st.write("### Price Comparison")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discounted_price"] - df["actual_price"], palette="coolwarm")
-    plt.title("Actual Price vs Discounted Price")
-    st.pyplot(fig)
-    
-    # Rating Distribution
-    st.write("### Product Ratings Distribution")
-    rating_counts = df["rating"].value_counts().reset_index()
-    rating_counts.columns = ["Rating", "Count"]
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=rating_counts["Rating"], y=rating_counts["Count"])
-    plt.xlabel("Rating")
-    plt.ylabel("Count")
-    plt.title("Ratings Count Distribution")
-    st.pyplot(fig)
-    
-    # Heatmap
-    st.write("### Correlation Heatmap")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.heatmap(df[["discounted_price", "actual_price", "rating", "rating_count"]].corr(), annot=True, cmap="coolwarm")
-    st.pyplot(fig)
+    if df.empty:
+        st.write("No data available for visualization.")
+    else:
+        # Histograms and Boxplots
+        st.write("### Distribution of Product Prices")
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+        sns.histplot(df["discounted_price"].dropna(), bins=30, kde=True, ax=ax[0])
+        ax[0].set_title("Discounted Price Distribution")
+        sns.boxplot(x=df["actual_price"].dropna(), ax=ax[1])
+        ax[1].set_title("Actual Price Boxplot")
+        st.pyplot(fig)
+        
+        # Scatter Plots
+        st.write("### Price Comparison")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discounted_price"] - df["actual_price"], palette="coolwarm")
+        plt.title("Actual Price vs Discounted Price")
+        st.pyplot(fig)
+        
+        # Rating Distribution
+        st.write("### Product Ratings Distribution")
+        rating_counts = df["rating"].value_counts().reset_index()
+        rating_counts.columns = ["Rating", "Count"]
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.barplot(x=rating_counts["Rating"], y=rating_counts["Count"])
+        plt.xlabel("Rating")
+        plt.ylabel("Count")
+        plt.title("Ratings Count Distribution")
+        st.pyplot(fig)
+        
+        # Heatmap
+        st.write("### Correlation Heatmap")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.heatmap(df[["discounted_price", "actual_price", "rating", "rating_count"]].corr(), annot=True, cmap="coolwarm")
+        st.pyplot(fig)
 
 elif menu == "Customer Segmentation":
     st.subheader("Customer Segmentation Using K-Means")
@@ -77,18 +83,21 @@ elif menu == "Customer Segmentation":
     # Select relevant features and drop NaN
     cluster_df = df[["discounted_price", "actual_price", "rating", "rating_count"]].dropna().copy()
     
-    # Apply K-Means clustering
-    kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-    cluster_df["Cluster"] = kmeans.fit_predict(cluster_df)
-    
-    # Visualization
-    st.write("### Clusters based on Pricing and Ratings")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=cluster_df["actual_price"], y=cluster_df["discounted_price"], hue=cluster_df["Cluster"], palette="Set1")
-    plt.xlabel("Actual Price")
-    plt.ylabel("Discounted Price")
-    plt.title("Customer Segmentation Clusters")
-    st.pyplot(fig)
+    if cluster_df.empty:
+        st.write("Not enough data for clustering.")
+    else:
+        # Apply K-Means clustering
+        kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
+        cluster_df["Cluster"] = kmeans.fit_predict(cluster_df)
+        
+        # Visualization
+        st.write("### Clusters based on Pricing and Ratings")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.scatterplot(x=cluster_df["actual_price"], y=cluster_df["discounted_price"], hue=cluster_df["Cluster"], palette="Set1")
+        plt.xlabel("Actual Price")
+        plt.ylabel("Discounted Price")
+        plt.title("Customer Segmentation Clusters")
+        st.pyplot(fig)
 
 elif menu == "Association Rule Mining":
     st.subheader("Frequent Itemset Mining with Apriori")
@@ -97,19 +106,22 @@ elif menu == "Association Rule Mining":
     basket = df.pivot_table(index='product_id', columns='category', values='discounted_price', aggfunc='sum').fillna(0)
     basket = basket.applymap(lambda x: 1 if x > 0 else 0)
     
-    # Apply Apriori
-    frequent_itemsets = apriori(basket, min_support=0.01, use_colnames=True)
-    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
-    
-    # Display Rules
-    st.write("### Association Rules")
-    st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+    if basket.empty:
+        st.write("Not enough data for association rule mining.")
+    else:
+        # Apply Apriori
+        frequent_itemsets = apriori(basket, min_support=0.01, use_colnames=True)
+        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+        
+        # Display Rules
+        st.write("### Association Rules")
+        st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
 
 elif menu == "User Behavior Analysis":
     st.subheader("User Behavior Insights")
     
     # Analyze Reviews
-    if "user_id" in df.columns:
+    if "user_id" in df.columns and not df["user_id"].isna().all():
         review_counts = df["user_id"].value_counts().head(10)
         st.write("### Top 10 Users by Review Count")
         fig, ax = plt.subplots(figsize=(8, 5))
