@@ -6,6 +6,7 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
+from mlxtend.frequent_patterns import apriori, association_rules
 
 # Load Data
 file_path = 'amazon.csv'
@@ -33,59 +34,83 @@ le = LabelEncoder()
 df['category'] = le.fit_transform(df['category'].astype(str))
 
 # EDA Functions
-def plot_histograms():
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.histplot(df['actual_price'], bins=30, ax=ax[0], kde=True)
-    ax[0].set_title("Actual Price Distribution")
-    sns.histplot(df['discounted_price'], bins=30, ax=ax[1], kde=True)
-    ax[1].set_title("Discounted Price Distribution")
-    st.pyplot(fig)
-
-def plot_scatter():
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['discounted_price'] / df['actual_price'])
-    plt.title("Actual Price vs Discounted Price")
-    st.pyplot(fig)
-
-def plot_correlation():
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.heatmap(df[['actual_price', 'discounted_price', 'rating', 'rating_count', 'category']].corr(), annot=True, cmap='coolwarm')
-    plt.title("Correlation Heatmap")
-    st.pyplot(fig)
+def eda_plots():
+    option = st.selectbox("Choose EDA Analysis", ["Histograms & Box Plots", "Scatter Plots", "Bar Charts", "Pie Chart & Heatmap"])
+    
+    if option == "Histograms & Box Plots":
+        fig, ax = plt.subplots(2, 2, figsize=(12, 10))
+        sns.histplot(df['actual_price'], bins=30, ax=ax[0, 0], kde=True)
+        ax[0, 0].set_title("Actual Price Distribution")
+        sns.histplot(df['discounted_price'], bins=30, ax=ax[0, 1], kde=True)
+        ax[0, 1].set_title("Discounted Price Distribution")
+        sns.boxplot(y=df['actual_price'], ax=ax[1, 0])
+        ax[1, 0].set_title("Actual Price Boxplot")
+        sns.boxplot(y=df['discounted_price'], ax=ax[1, 1])
+        ax[1, 1].set_title("Discounted Price Boxplot")
+        st.pyplot(fig)
+    
+    elif option == "Scatter Plots":
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['discounted_price'] / df['actual_price'])
+        plt.title("Actual Price vs Discounted Price")
+        st.pyplot(fig)
+    
+    elif option == "Bar Charts":
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+        sns.barplot(x=df['category'].value_counts().index, y=df['category'].value_counts().values, ax=ax[0])
+        ax[0].set_title("Product Category Distribution")
+        sns.barplot(x=df['rating'].value_counts().index, y=df['rating'].value_counts().values, ax=ax[1])
+        ax[1].set_title("Product Rating Distribution")
+        st.pyplot(fig)
+    
+    elif option == "Pie Chart & Heatmap":
+        fig, ax = plt.subplots(figsize=(6, 6))
+        df['category'].value_counts().plot.pie(autopct='%1.1f%%', cmap='viridis')
+        plt.title("Category Distribution")
+        st.pyplot(fig)
+        
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.heatmap(df[['actual_price', 'discounted_price', 'rating', 'rating_count', 'category']].corr(), annot=True, cmap='coolwarm')
+        plt.title("Correlation Heatmap")
+        st.pyplot(fig)
 
 # Customer Segmentation
-scaler = StandardScaler()
-df_scaled = scaler.fit_transform(df[['actual_price', 'discounted_price', 'rating', 'rating_count']])
-kmeans = KMeans(n_clusters=3, random_state=42)
-df['customer_segment'] = kmeans.fit_predict(df_scaled)
-
-def plot_segments():
+def customer_segmentation():
+    scaler = StandardScaler()
+    df_scaled = scaler.fit_transform(df[['actual_price', 'discounted_price', 'rating', 'rating_count']])
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    df['customer_segment'] = kmeans.fit_predict(df_scaled)
+    
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['customer_segment'], palette='viridis')
     plt.title("Customer Segments")
     st.pyplot(fig)
 
-def plot_3d_graph():
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(df['actual_price'], df['discounted_price'], df['rating'], c=df['customer_segment'], cmap='viridis')
-    ax.set_xlabel('Actual Price')
-    ax.set_ylabel('Discounted Price')
-    ax.set_zlabel('Rating')
-    ax.set_title("3D Visualization of Product Data")
+# Association Rule Mining
+def association_rule_mining():
+    st.write("Applying Apriori Algorithm for Frequent Itemset Mining")
+    df_encoded = pd.get_dummies(df[['product_id', 'category']])
+    frequent_itemsets = apriori(df_encoded, min_support=0.05, use_colnames=True)
+    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+    st.write(rules.head())
+
+# User Behavior Analysis
+def user_behavior_analysis():
+    st.write("User Behavior Analysis based on Reviews and Ratings")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    sns.histplot(df['rating_count'], bins=30, kde=True)
+    plt.title("User Engagement Distribution")
     st.pyplot(fig)
 
 # Streamlit App
 st.title("Amazon Data Analysis Dashboard")
-option = st.sidebar.selectbox("Choose Analysis", ["Histograms", "Scatter Plot", "Correlation Heatmap", "Customer Segmentation", "3D Visualization"])
+menu = st.sidebar.selectbox("Choose Analysis", ["Exploratory Data Analysis", "Customer Segmentation", "Association Rule Mining", "User Behavior Analysis"])
 
-if option == "Histograms":
-    plot_histograms()
-elif option == "Scatter Plot":
-    plot_scatter()
-elif option == "Correlation Heatmap":
-    plot_correlation()
-elif option == "Customer Segmentation":
-    plot_segments()
-elif option == "3D Visualization":
-    plot_3d_graph()
+if menu == "Exploratory Data Analysis":
+    eda_plots()
+elif menu == "Customer Segmentation":
+    customer_segmentation()
+elif menu == "Association Rule Mining":
+    association_rule_mining()
+elif menu == "User Behavior Analysis":
+    user_behavior_analysis()
