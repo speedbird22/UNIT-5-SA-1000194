@@ -25,9 +25,13 @@ if option == "EDA":
     fig, ax = plt.subplots(1, 3, figsize=(18, 5))
     sns.histplot(df['discounted_price'], bins=30, kde=True, ax=ax[0])
     ax[0].set_title("Distribution of Discounted Prices")
-    sns.boxplot(x=df['product_category'], y=df['discounted_price'], ax=ax[1])
-    ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=90)
-    ax[1].set_title("Price Distribution Across Categories")
+    
+    if 'product_category' in df.columns:
+        sns.boxplot(x=df['product_category'], y=df['discounted_price'], ax=ax[1])
+        ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=90)
+        ax[1].set_title("Price Distribution Across Categories")
+    else:
+        st.error("Column 'product_category' not found in the dataset!")
     
     corr = df[['discounted_price', 'actual_price', 'rating', 'rating_count']].corr()
     sns.heatmap(corr, annot=True, cmap='coolwarm', ax=ax[2])
@@ -69,13 +73,15 @@ if option == "Behavior Analysis":
 
 if option == "Customer Segments":
     st.header("Customer Segmentation")
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.boxplot(x=df['product_category'], y=df['discounted_price'])
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-    ax.set_title("Product Categories vs. Discounted Price")
-    st.pyplot(fig)
-    
-    st.dataframe(df[['product_category', 'discounted_price']].groupby('product_category').mean())
+    if 'product_category' in df.columns:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.boxplot(x=df['product_category'], y=df['discounted_price'])
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+        ax.set_title("Product Categories vs. Discounted Price")
+        st.pyplot(fig)
+        st.dataframe(df[['product_category', 'discounted_price']].groupby('product_category').mean())
+    else:
+        st.error("Column 'product_category' not found in the dataset!")
 
 if option == "Frequently Bought Together Items":
     st.header("Frequently Bought Together Items")
