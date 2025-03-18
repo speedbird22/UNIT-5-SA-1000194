@@ -10,9 +10,11 @@ def load_and_clean_data():
     file_path = "amazon.csv"
     df = pd.read_csv(file_path)
     
-    # Convert price columns to numeric, forcing errors to NaN
+    # Convert price and rating columns to numeric, forcing errors to NaN
     df["discounted_price"] = pd.to_numeric(df["discounted_price"], errors='coerce')
     df["actual_price"] = pd.to_numeric(df["actual_price"], errors='coerce')
+    df["rating"] = pd.to_numeric(df["rating"], errors='coerce')
+    df["rating_count"] = pd.to_numeric(df["rating_count"], errors='coerce')
     
     # Data Cleaning
     df.drop_duplicates(inplace=True)
@@ -39,23 +41,25 @@ if menu == "Exploratory Data Analysis (EDA)":
     # Histograms and Boxplots
     st.write("### Distribution of Product Prices")
     fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.histplot(df["discounted_price"], bins=30, kde=True, ax=ax[0])
+    sns.histplot(df["discounted_price"].dropna(), bins=30, kde=True, ax=ax[0])
     ax[0].set_title("Discounted Price Distribution")
-    sns.boxplot(x=df["actual_price"], ax=ax[1])
+    sns.boxplot(x=df["actual_price"].dropna(), ax=ax[1])
     ax[1].set_title("Actual Price Boxplot")
     st.pyplot(fig)
     
     # Scatter Plots
     st.write("### Price Comparison")
     fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discount_percentage"], palette="coolwarm")
+    sns.scatterplot(x=df["actual_price"], y=df["discounted_price"], hue=df["discounted_price"] - df["actual_price"], palette="coolwarm")
     plt.title("Actual Price vs Discounted Price")
     st.pyplot(fig)
     
     # Rating Distribution
     st.write("### Product Ratings Distribution")
+    rating_counts = df["rating"].value_counts().reset_index()
+    rating_counts.columns = ["Rating", "Count"]
     fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=df["rating"].value_counts().index, y=df["rating"].value_counts())
+    sns.barplot(x=rating_counts["Rating"], y=rating_counts["Count"])
     plt.xlabel("Rating")
     plt.ylabel("Count")
     plt.title("Ratings Count Distribution")
@@ -70,9 +74,11 @@ if menu == "Exploratory Data Analysis (EDA)":
 elif menu == "Customer Segmentation":
     st.subheader("Customer Segmentation Using K-Means")
     
-    # Select relevant features
-    cluster_df = df[["discounted_price", "actual_price", "rating", "rating_count"]].dropna()
-    kmeans = KMeans(n_clusters=3, random_state=42)
+    # Select relevant features and drop NaN
+    cluster_df = df[["discounted_price", "actual_price", "rating", "rating_count"]].dropna().copy()
+    
+    # Apply K-Means clustering
+    kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
     cluster_df["Cluster"] = kmeans.fit_predict(cluster_df)
     
     # Visualization
@@ -103,10 +109,13 @@ elif menu == "User Behavior Analysis":
     st.subheader("User Behavior Insights")
     
     # Analyze Reviews
-    review_counts = df["user_id"].value_counts().head(10)
-    st.write("### Top 10 Users by Review Count")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=review_counts.index, y=review_counts.values)
-    plt.xticks(rotation=90)
-    plt.title("Most Active Reviewers")
-    st.pyplot(fig)
+    if "user_id" in df.columns:
+        review_counts = df["user_id"].value_counts().head(10)
+        st.write("### Top 10 Users by Review Count")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.barplot(x=review_counts.index, y=review_counts.values)
+        plt.xticks(rotation=90)
+        plt.title("Most Active Reviewers")
+        st.pyplot(fig)
+    else:
+        st.write("User data not available in this dataset.")
