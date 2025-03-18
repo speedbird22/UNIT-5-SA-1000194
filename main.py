@@ -6,49 +6,54 @@ import streamlit as st
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
+from mlxtend.frequent_patterns import apriori, association_rules
 
 # Load Data
 file_path = 'amazon.csv'
 df = pd.read_csv(file_path)
 
-# Data Cleaning - Ensure no data is deleted
-df.fillna(df.select_dtypes(include=[np.number]).median(), inplace=True)
+# Data Cleaning
+df.dropna(subset=['product_id', 'actual_price', 'discounted_price', 'rating', 'rating_count'], inplace=True)
+df.fillna(method='ffill', inplace=True)
+df['actual_price'] = pd.to_numeric(df['actual_price'].replace('[^\d.]', '', regex=True), errors='coerce')
+df['discounted_price'] = pd.to_numeric(df['discounted_price'].replace('[^\d.]', '', regex=True), errors='coerce')
+df['actual_price'].replace(0, np.nan, inplace=True)
+df['discounted_price'].replace(0, np.nan, inplace=True)
+df['actual_price'].fillna(df['actual_price'].median(), inplace=True)
+df['discounted_price'].fillna(df['discounted_price'].median(), inplace=True)
+df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+df['rating'].replace(0, np.nan, inplace=True)
+df['rating'].fillna(df['rating'].median(), inplace=True)
+df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce')
+df['rating_count'].replace(0, np.nan, inplace=True)
+df['rating_count'].fillna(df['rating_count'].median(), inplace=True)
+df['rating_count'] = df['rating_count'].astype(int)
+
+# Encoding Categorical Features
 le = LabelEncoder()
 df['category'] = le.fit_transform(df['category'].astype(str))
 
-# Exploratory Data Analysis (EDA)
-def plot_histograms_boxplots():
-    fig, ax = plt.subplots(2, 2, figsize=(12, 8))
-    sns.histplot(df['actual_price'], bins=30, ax=ax[0, 0], kde=True)
-    ax[0, 0].set_title("Actual Price Distribution")
-    sns.histplot(df['discounted_price'], bins=30, ax=ax[0, 1], kde=True)
-    ax[0, 1].set_title("Discounted Price Distribution")
-    sns.boxplot(x=df['actual_price'], ax=ax[1, 0])
-    ax[1, 0].set_title("Actual Price Box Plot")
-    sns.boxplot(x=df['discounted_price'], ax=ax[1, 1])
-    ax[1, 1].set_title("Discounted Price Box Plot")
+# EDA Functions
+def plot_histograms():
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.histplot(df['actual_price'], bins=30, ax=ax[0], kde=True)
+    ax[0].set_title("Actual Price Distribution")
+    sns.histplot(df['discounted_price'], bins=30, ax=ax[1], kde=True)
+    ax[1].set_title("Discounted Price Distribution")
+    st.pyplot(fig)
+
+def plot_boxplots():
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    sns.boxplot(y=df['actual_price'], ax=ax[0])
+    ax[0].set_title("Actual Price Boxplot")
+    sns.boxplot(y=df['discounted_price'], ax=ax[1])
+    ax[1].set_title("Discounted Price Boxplot")
     st.pyplot(fig)
 
 def plot_scatter():
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.scatterplot(x=df['actual_price'], y=df['discounted_price'], hue=df['discounted_price'] / df['actual_price'])
     plt.title("Actual Price vs Discounted Price")
-    st.pyplot(fig)
-
-def plot_rating_analysis():
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.barplot(x=df['rating'].value_counts().index, y=df['rating'].value_counts(), ax=ax[0])
-    ax[0].set_title("Rating Distribution")
-    sns.histplot(df['rating_count'], bins=30, ax=ax[1], kde=True)
-    ax[1].set_title("Rating Count Distribution")
-    st.pyplot(fig)
-
-def plot_category_analysis():
-    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
-    sns.barplot(x=df['category'].value_counts().index, y=df['category'].value_counts(), ax=ax[0])
-    ax[0].set_title("Category Distribution")
-    df['category'].value_counts().plot.pie(autopct='%1.1f%%', ax=ax[1])
-    ax[1].set_title("Category Distribution (Pie Chart)")
     st.pyplot(fig)
 
 def plot_correlation():
@@ -79,39 +84,31 @@ def plot_3d_graph():
     ax.set_title("3D Visualization of Product Data")
     st.pyplot(fig)
 
+# Association Rule Mining
+def run_association_rule_mining():
+    df_basket = df[['product_id', 'category']]
+    df_basket = df_basket.pivot_table(index='product_id', columns='category', aggfunc=len, fill_value=0)
+    frequent_itemsets = apriori(df_basket, min_support=0.05, use_colnames=True)
+    rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.0)
+    st.write(rules.head())
+
 # Streamlit App
 st.title("Amazon Data Analysis Dashboard")
-option = st.sidebar.selectbox("Choose Analysis", [
-    "Exploratory Data Analysis (EDA)",
-    "Customer Segmentation",
-    "Association Rule Mining",
-    "User Behavior Analysis",
-])
+analysis_type = st.sidebar.selectbox("Choose Analysis", ["EDA", "Customer Segmentation", "Association Rule Mining", "3D Visualization"])
 
-if option == "Exploratory Data Analysis (EDA)":
-    analysis = st.selectbox("Select EDA Analysis", [
-        "Histograms & Box Plots", "Scatter Plots", "Rating Analysis", "Category Analysis", "Correlation Heatmap"
-    ])
-    if analysis == "Histograms & Box Plots":
-        plot_histograms_boxplots()
-    elif analysis == "Scatter Plots":
+if analysis_type == "EDA":
+    eda_option = st.selectbox("Choose EDA Graph", ["Histograms", "Boxplots", "Scatter Plot", "Correlation Heatmap"])
+    if eda_option == "Histograms":
+        plot_histograms()
+    elif eda_option == "Boxplots":
+        plot_boxplots()
+    elif eda_option == "Scatter Plot":
         plot_scatter()
-    elif analysis == "Rating Analysis":
-        plot_rating_analysis()
-    elif analysis == "Category Analysis":
-        plot_category_analysis()
-    elif analysis == "Correlation Heatmap":
+    elif eda_option == "Correlation Heatmap":
         plot_correlation()
-
-elif option == "Customer Segmentation":
-    segmentation_analysis = st.selectbox("Select Segmentation Analysis", ["Customer Segments", "3D Visualization"])
-    if segmentation_analysis == "Customer Segments":
-        plot_segments()
-    elif segmentation_analysis == "3D Visualization":
-        plot_3d_graph()
-
-# Placeholder for Association Rule Mining and User Behavior Analysis
-elif option == "Association Rule Mining":
-    st.write("Coming soon: Association Rule Mining using Apriori Algorithm!")
-elif option == "User Behavior Analysis":
-    st.write("Coming soon: User behavior insights from reviews and ratings!")
+elif analysis_type == "Customer Segmentation":
+    plot_segments()
+elif analysis_type == "3D Visualization":
+    plot_3d_graph()
+elif analysis_type == "Association Rule Mining":
+    run_association_rule_mining()
